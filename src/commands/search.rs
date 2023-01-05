@@ -1,3 +1,4 @@
+use log::warn;
 use serenity::builder::CreateApplicationCommand;
 use serenity::model::prelude::command::CommandOptionType;
 use serenity::model::prelude::interaction::application_command::{
@@ -5,8 +6,16 @@ use serenity::model::prelude::interaction::application_command::{
     CommandDataOptionValue,
 };
 
-pub fn run(options: &[CommandDataOption]) -> String {
-    let music_type_option = options 
+use rspotify::{
+    AuthCodeSpotify,
+    model::enums::types::SearchType,
+    model::page::Page,
+    clients::BaseClient,
+    model::search::SearchResult,
+};
+
+pub async fn run(options: &[CommandDataOption], spotify: AuthCodeSpotify) -> String {
+    let search_type_option = options 
         .get(0)
         .expect("Expected music type")
         .resolved
@@ -20,12 +29,49 @@ pub fn run(options: &[CommandDataOption]) -> String {
         .as_ref()
         .expect("Expected string object");
 
-    if let (CommandDataOptionValue::String(music_type), CommandDataOptionValue::String(search_term)) = 
-        (music_type_option, search_term_option)  
+    if let (CommandDataOptionValue::String(search_type), CommandDataOptionValue::String(search_term)) = 
+        (search_type_option, search_term_option)  
     {
-        format!("Search {} for {}", music_type, search_term)
+        let spotify_type = match search_type.as_str() {
+            "album" => SearchType::Album,
+            "playlist" => SearchType::Playlist,
+            _ => SearchType::Track,
+        };
+
+        let future_result = spotify.search(search_term, &spotify_type, None, None, Some(5), None);
+        match future_result.await {
+            Ok(result) => {
+                let mut result_string: String = "Search Results: \n".to_string();
+                match result {
+                    SearchResult::Tracks(page) => {
+                        let items = page.items;
+
+                        for item in items {
+                            result_string.push_str(format!("{} - {} \n", item.artists[0].name, item.name).as_str());
+                        }
+                    }
+                    SearchResult::Albums(page) => {
+                        let items = page.items;
+
+                        for item in items {
+                            result_string.push_str(format!("{} - {} \n", item.artists[0].name, item.name).as_str());
+                        }
+                    }
+                    SearchResult::Playlists(page) => {
+                        let items = page.items;
+
+                        for item in items {
+                            result_string.push_str(format!("{} \n", item.name).as_str());
+                        }
+                    }
+                    _ => result_string = "shouldn't be possible".to_string(),
+                }
+                result_string
+            },
+            Err(why) => format!("Search Failed: {:?}", why),
+        }
     } else {
-        "Invalid search type".to_string()
+        "shouldn't be possible".to_string()
     }
 }
 

@@ -12,7 +12,18 @@ use serenity::model::id::GuildId;
 use serenity::prelude::*;
 use log::{Record, Level, Metadata, SetLoggerError, LevelFilter, debug, error, info};
 
-struct Handler;
+use rspotify::{
+    AuthCodeSpotify,
+    Config,
+    Credentials,
+    OAuth,
+    clients::OAuthClient,
+    scopes,
+};
+
+struct Handler {
+    spotify: AuthCodeSpotify,
+}
 
 struct SimpleLogger;
 
@@ -45,7 +56,7 @@ impl EventHandler for Handler {
             info!("Received command interaction: {:#?}", command);
 
             let content = match command.data.name.as_str() {
-                "search" => commands::search::run(&command.data.options),
+                "search" => commands::search::run(&command.data.options, self.spotify.clone()).await,
                 _ => "not implemented :(".to_string(),
             };
 
@@ -95,12 +106,30 @@ async fn main() {
 
     log_init();
 
+    // Spotify auth
+    let config = Config {
+        token_refreshing: true,
+        ..Default::default()
+    };
+
+    let creds = Credentials::from_env().unwrap();
+    let oauth = OAuth::from_env(scopes!("user-read-playback-state")).unwrap();
+
+    let mut spotify = AuthCodeSpotify::with_config(creds, oauth, config);
+    let url = spotify.get_authorize_url(false).unwrap();
+
+    spotify
+        .prompt_for_token(&url)
+        .await
+        .expect("auth failed");
+
+    // Discord auth
     // Configure the client with your Discord bot token in the environment.
     let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
 
     // Build our client.
     let mut client = Client::builder(token, GatewayIntents::empty())
-        .event_handler(Handler)
+        .event_handler(Handler { spotify: spotify, } )
         .await
         .expect("Error creating client");
 
