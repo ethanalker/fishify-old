@@ -33,7 +33,7 @@ pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> St
         let future_result = spotify.search(search_term, &spotify_type, None, None, Some(5), None);
         match future_result.await {
             Ok(result) => {
-                let mut result_string: String = "Search Results: \n".to_string();
+                let mut result_string: String = format!("Search Results for '{}': \n", search_term);
                 match result {
                     SearchResult::Tracks(page) => {
                         let items = page.items;
