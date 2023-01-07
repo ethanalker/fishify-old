@@ -1,4 +1,5 @@
 use log::warn;
+
 use serenity::builder::CreateApplicationCommand;
 use serenity::model::prelude::command::CommandOptionType;
 use serenity::model::prelude::interaction::application_command::{
@@ -14,23 +15,14 @@ use rspotify::{
     model::search::SearchResult,
 };
 
-pub async fn run(options: &[CommandDataOption], spotify: AuthCodeSpotify) -> String {
-    let search_type_option = options 
-        .get(0)
-        .expect("Expected music type")
-        .resolved
-        .as_ref()
-        .expect("Expected string object");
-    
-    let search_term_option = options
-        .get(1)
-        .expect("Expected search term")
-        .resolved
-        .as_ref()
-        .expect("Expected string object");
+pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> String {
+    let mut values: Vec<&CommandDataOptionValue> = vec![];
+    for option in options {
+        values.push(option.resolved.as_ref().expect("Expected option value"));
+    }
 
     if let (CommandDataOptionValue::String(search_type), CommandDataOptionValue::String(search_term)) = 
-        (search_type_option, search_term_option)  
+        (values[0], values[1])  
     {
         let spotify_type = match search_type.as_str() {
             "album" => SearchType::Album,
@@ -64,14 +56,14 @@ pub async fn run(options: &[CommandDataOption], spotify: AuthCodeSpotify) -> Str
                             result_string.push_str(format!("{} \n", item.name).as_str());
                         }
                     }
-                    _ => result_string = "shouldn't be possible".to_string(),
+                    _ => result_string = "Search Failed: Expected track, album, or playlist".to_string(),
                 }
                 result_string
             },
             Err(why) => format!("Search Failed: {:?}", why),
         }
     } else {
-        "shouldn't be possible".to_string()
+        "Search Failed: Expected search term and type to be strings".to_string()
     }
 }
 
@@ -81,7 +73,7 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
         .description("Search for tracks, albums, and playlists through spotify")
         .create_option(|option| {
             option
-                .name("music_type")
+                .name("type")
                 .description("track, album, or playlist")
                 .kind(CommandOptionType::String)
                 .add_string_choice("track", "track")
@@ -91,8 +83,8 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
         })
         .create_option(|option| {
             option
-                .name("search_term")
-                .description("music to search for")
+                .name("name")
+                .description("name of music to search for")
                 .kind(CommandOptionType::String)
                 .required(true)
         })

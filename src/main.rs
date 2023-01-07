@@ -29,7 +29,7 @@ struct SimpleLogger;
 
 impl log::Log for SimpleLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= Level::Warn
+        metadata.level() <= Level::Info
     }
 
     fn log(&self, record: &Record) {
@@ -45,7 +45,7 @@ static LOGGER: SimpleLogger = SimpleLogger;
 
 pub fn log_init() -> Result<(), SetLoggerError> {
         log::set_logger(&LOGGER)
-                    .map(|()| log::set_max_level(LevelFilter::Warn))
+                    .map(|()| log::set_max_level(LevelFilter::Info))
 }
 
 
@@ -56,7 +56,9 @@ impl EventHandler for Handler {
             info!("Received command interaction: {:#?}", command);
 
             let content = match command.data.name.as_str() {
-                "search" => commands::search::run(&command.data.options, self.spotify.clone()).await,
+                "search" => commands::search::run(&command.data.options, &self.spotify).await,
+                // "play" => commands::play::run(&command.data.options, self.spotify.clone()).await,
+                "queue" => commands::queue::run(&command.data.options, &self.spotify).await,
                 _ => "not implemented :(".to_string(),
             };
 
@@ -86,6 +88,8 @@ impl EventHandler for Handler {
         let commands = GuildId::set_application_commands(&guild_id, &ctx.http, |commands| {
             commands
                 .create_application_command(|command| commands::search::register(command))
+                // .create_application_command(|command| commands::play::register(command))
+                .create_application_command(|command| commands::queue::register(command))
         })
         .await;
 
@@ -113,7 +117,7 @@ async fn main() {
     };
 
     let creds = Credentials::from_env().unwrap();
-    let oauth = OAuth::from_env(scopes!("user-read-playback-state")).unwrap();
+    let oauth = OAuth::from_env(scopes!("user-read-playback-state", "user-modify-playback-state")).unwrap();
 
     let mut spotify = AuthCodeSpotify::with_config(creds, oauth, config);
     let url = spotify.get_authorize_url(false).unwrap();
