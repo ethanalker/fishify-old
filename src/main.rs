@@ -59,6 +59,7 @@ impl EventHandler for Handler {
                 "search" => commands::search::run(&command.data.options, &self.spotify).await,
                 // "play" => commands::play::run(&command.data.options, self.spotify.clone()).await,
                 "queue" => commands::queue::run(&command.data.options, &self.spotify).await,
+                "set" => commands::set::run(&command.data.options, &self.spotify).await,
                 _ => "not implemented :(".to_string(),
             };
 
@@ -90,6 +91,7 @@ impl EventHandler for Handler {
                 .create_application_command(|command| commands::search::register(command))
                 // .create_application_command(|command| commands::play::register(command))
                 .create_application_command(|command| commands::queue::register(command))
+                .create_application_command(|command| commands::set::register(command))
         })
         .await;
 
