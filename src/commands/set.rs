@@ -12,50 +12,52 @@ use rspotify::{
     model::enums::misc::RepeatState,
 };
 
-pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> String {
+use crate::CommandError;
+
+pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Result<String, CommandError> {
     let option = options
         .get(0)
-        .expect("expected subcommand");
+        .ok_or("No argument")?;
 
     let option_value = option
         .options
         .get(0)
-        .expect("expected option")
-        .resolved
+        .ok_or("No argument")?
+        .resolved    
         .as_ref()
-        .expect("expected value");
-    
+        .ok_or("No argument value")?;
+
     match option.name.as_str() {
         "repeat" => {
-            if let CommandDataOptionValue::Boolean(value) = option_value {
-                if *value {
-                    spotify.repeat(&RepeatState::Context, None).await.expect("request failed");
-                    format!("Set repeat to on")
+            if let CommandDataOptionValue::Boolean(value) = *option_value {
+                if value {
+                    spotify.repeat(RepeatState::Context, None).await?;
+                    Ok("Set repeat to on".to_string())
                 } else {
-                    spotify.repeat(&RepeatState::Off, None).await.expect("request failed");
-                    format!("Set repeat to off")
+                    spotify.repeat(RepeatState::Off, None).await?;
+                    Ok("Set repeat to off".to_string())
                 }
             } else {
-                "Failed: expected boolean value".to_string()
+                Err(CommandError::from("Expected boolean value"))
             }
         }
         "shuffle" => {
-            if let CommandDataOptionValue::Boolean(value) = option_value {
-                spotify.shuffle(*value, None).await.expect("request failed");
-                format!("Set shuffle to {}", value)
+            if let CommandDataOptionValue::Boolean(value) = *option_value {
+                spotify.shuffle(value, None).await?;
+                Ok(format!("Set shuffle to {}", value))
             } else {
-                "Failed: expected boolean value".to_string()
+                Err(CommandError::from("Expected boolean value"))
             }
         }
         "volume" => {
-            if let CommandDataOptionValue::Integer(value) = option_value {
-                spotify.volume((*value).try_into().unwrap(), None).await.expect("request failed");
-                format!("Set volume to {}", value)
+            if let CommandDataOptionValue::Integer(value) = *option_value {
+                spotify.volume(value.try_into().unwrap(), None).await?;
+                Ok(format!("Set volume to {}", value))
             } else {
-                "Failed: expected integer value".to_string()
+                Err(CommandError::from("Expected integer value"))
             }
         }
-        _ => "Failed: unknown subcommand".to_string(),
+        _ => Err(CommandError::from("Unknown subcommand"))
     }
 }
 

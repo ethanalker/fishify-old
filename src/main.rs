@@ -5,12 +5,15 @@ use std::env;
 use dotenv;
 
 use serenity::async_trait;
-use serenity::model::application::command::Command;
 use serenity::model::application::interaction::{Interaction, InteractionResponseType};
 use serenity::model::gateway::Ready;
 use serenity::model::id::GuildId;
 use serenity::prelude::*;
 use log::{Record, Level, Metadata, SetLoggerError, LevelFilter, debug, error, info};
+use serenity::model::prelude::interaction::application_command::{
+    CommandDataOption,
+    CommandDataOptionValue,
+};
 
 use rspotify::{
     AuthCodeSpotify,
@@ -19,6 +22,8 @@ use rspotify::{
     OAuth,
     clients::OAuthClient,
     scopes,
+    ClientError,
+    model::enums::types::SearchType,
 };
 
 struct Handler {
@@ -48,6 +53,66 @@ pub fn log_init() -> Result<(), SetLoggerError> {
                     .map(|()| log::set_max_level(LevelFilter::Info))
 }
 
+#[derive(Debug)]
+pub enum CommandError {
+    SpotifyError(ClientError),
+    SimpleError(String),
+}
+
+impl From<&str> for CommandError {
+    fn from(string: &str) -> Self {
+        CommandError::SimpleError(string.to_string())
+    }
+}
+
+impl From<ClientError> for CommandError {
+    fn from(error: ClientError) -> Self {
+        CommandError::SpotifyError(error)
+    }
+}
+
+impl From<CommandError> for String {
+    fn from(command_error: CommandError) -> Self {
+        match command_error {
+            CommandError::SpotifyError(error) => format!("Error: {}", error.to_string()),
+            CommandError::SimpleError(error) => format!("Error: {}", error),
+        }
+    }
+}
+
+trait ParseTypeFromStr: Sized {
+    fn parse(string: &str) -> Result<Self, CommandError>;
+}
+
+impl ParseTypeFromStr for SearchType {
+    fn parse(string: &str) -> Result<Self, CommandError> {
+        match string {
+            "track" => Ok(SearchType::Track),
+            "album" => Ok(SearchType::Album),
+            "playlist" => Ok(SearchType::Playlist),
+            "artist" => Ok(SearchType::Artist),
+            _ => return Err(CommandError::from("Unexpected search choice")),
+        }
+    }
+}
+
+trait ParseOptionValues {
+    fn values(&self) -> Result<Vec<&CommandDataOptionValue>, CommandError>;
+}
+
+impl ParseOptionValues for [CommandDataOption] {
+    fn values(&self) -> Result<Vec<&CommandDataOptionValue>, CommandError> {
+        let mut values: Vec<&CommandDataOptionValue> = vec![];
+        for option in self {
+            let value = option
+                .resolved
+                .as_ref()
+                .ok_or("Missing option value")?;
+            values.push(value);
+        }
+        Ok(values)
+    }
+}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -55,12 +120,19 @@ impl EventHandler for Handler {
         if let Interaction::ApplicationCommand(command) = interaction {
             info!("Received command interaction: {:#?}", command);
 
-            let content = match command.data.name.as_str() {
+            let content_result = match command.data.name.as_str() {
                 "search" => commands::search::run(&command.data.options, &self.spotify).await,
-                // "play" => commands::play::run(&command.data.options, self.spotify.clone()).await,
+                "play" => commands::play::run(&command.data.options, &self.spotify).await,
                 "queue" => commands::queue::run(&command.data.options, &self.spotify).await,
                 "set" => commands::set::run(&command.data.options, &self.spotify).await,
-                _ => "not implemented :(".to_string(),
+                // "skip" => commands::skip::run(&command.data.options, &self.spotify).await,
+                "list" => commands::list::run(&command.data.options, &self.spotify).await,
+                _ => Err(CommandError::SimpleError("not implemented :(".to_string())),
+            };
+
+            let content = match content_result {
+                Ok(msg) => msg,
+                Err(why) => String::from(why),
             };
 
             if let Err(why) = command
@@ -89,9 +161,11 @@ impl EventHandler for Handler {
         let commands = GuildId::set_application_commands(&guild_id, &ctx.http, |commands| {
             commands
                 .create_application_command(|command| commands::search::register(command))
-                // .create_application_command(|command| commands::play::register(command))
+                .create_application_command(|command| commands::play::register(command))
                 .create_application_command(|command| commands::queue::register(command))
                 .create_application_command(|command| commands::set::register(command))
+                // .create_application_command(|command| commands::skip::register(command))
+                .create_application_command(|command| commands::list::register(command))
         })
         .await;
 
@@ -121,7 +195,7 @@ async fn main() {
     let creds = Credentials::from_env().unwrap();
     let oauth = OAuth::from_env(scopes!("user-read-playback-state", "user-modify-playback-state")).unwrap();
 
-    let mut spotify = AuthCodeSpotify::with_config(creds, oauth, config);
+    let spotify = AuthCodeSpotify::with_config(creds, oauth, config);
     let url = spotify.get_authorize_url(false).unwrap();
 
     spotify
@@ -135,7 +209,7 @@ async fn main() {
 
     // Build our client.
     let mut client = Client::builder(token, GatewayIntents::empty())
-        .event_handler(Handler { spotify: spotify, } )
+        .event_handler(Handler { spotify: spotify, })
         .await
         .expect("Error creating client");
 

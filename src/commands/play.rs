@@ -1,5 +1,4 @@
 use log::warn;
-
 use serenity::builder::CreateApplicationCommand;
 use serenity::model::prelude::command::CommandOptionType;
 use serenity::model::prelude::interaction::application_command::{
@@ -10,8 +9,14 @@ use serenity::model::prelude::interaction::application_command::{
 use rspotify::{
     AuthCodeSpotify,
     model::enums::types::SearchType,
+    model::page::Page,
+    model::idtypes::TrackId,
+    prelude::PlayableId,
+    model::PlayableItem,
     clients::BaseClient,
+    clients::OAuthClient,
     model::search::SearchResult,
+    prelude::PlayContextId,
 };
 
 use crate::CommandError;
@@ -19,47 +24,42 @@ use crate::ParseOptionValues;
 use crate::ParseTypeFromStr;
 
 pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Result<String, CommandError> {
-    let values: Vec<&CommandDataOptionValue> = options.values()?;
+    let values: Vec<&CommandDataOptionValue> = options.values();
 
     if let (CommandDataOptionValue::String(search_type), CommandDataOptionValue::String(search_term)) = 
         (values[0], values[1])  
     {
-        let spotify_type = SearchType::parse(&search_type)?;
+        let spotify_type = SearchType::parse(search_type)?;
 
-        let result = spotify.search(&search_term, spotify_type, None, None, Some(5), None).await?;
-        let mut result_string: String = format!("Search results for '{}'\n", search_term);
+        let result = spotify.search(search_term, spotify_type, None, None, Some(1), None).await?;
         match result {
             SearchResult::Tracks(page) => {
-                let items = page.items;
+                let track = page.items[0].clone();
+                let id = track.id.ok_or("No track id")?;
 
-                for item in items {
-                    result_string.push_str(format!("{} \u{2014} {} \n", item.artists[0].name, item.name).as_str());
-                }
-                Ok(result_string)
+                spotify.start_uris_playback([PlayableId::Track(id)], None, None, None).await?;
+                Ok(format!("Now playing {} by {}", track.name, track.artists[0].name))
             }
             SearchResult::Albums(page) => {
-                let items = page.items;
-
-                for item in items {
-                    result_string.push_str(format!("{} \u{2014} {} \n", item.artists[0].name, item.name).as_str());
-                }
-                Ok(result_string)
+                let album = page.items[0].clone();
+                let id = album.id.ok_or("No album id")?;
+                
+                spotify.start_context_playback(PlayContextId::Album(id), None, None, None).await?;
+                Ok(format!("Now playing {} by {}", album.name, album.artists[0].name))
             }
             SearchResult::Playlists(page) => {
-                let items = page.items;
+                let playlist = page.items[0].clone();
+                let id = playlist.id;
 
-                for item in items {
-                    result_string.push_str(format!("{} \n", item.name).as_str());
-                }
-                Ok(result_string)
+                spotify.start_context_playback(PlayContextId::Playlist(id), None, None, None).await?;
+                Ok(format!("Now playing {}", playlist.name))
             }
             SearchResult::Artists(page) => {
-                let items = page.items;
+                let artist = page.items[0].clone();
+                let id = artist.id;
 
-                for item in items {
-                    result_string.push_str(format!("{} \n", item.name).as_str());
-                }
-                Ok(result_string)
+                spotify.start_context_playback(PlayContextId::Artist(id), None, None, None).await?;
+                Ok(format!("Now playing from {}", artist.name))
             }
             _ => Err(CommandError::from("Unexpected search result type")),
         }
@@ -70,12 +70,12 @@ pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Re
 
 pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
     command
-        .name("search")
-        .description("Search for tracks, albums, and playlists through spotify")
+        .name("play")
+        .description("Play spotify music")
         .create_option(|option| {
             option
                 .name("type")
-                .description("track, album, or playlist")
+                .description("track, album, playlist, or artist")
                 .kind(CommandOptionType::String)
                 .add_string_choice("track", "track")
                 .add_string_choice("album", "album")
@@ -86,7 +86,7 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
         .create_option(|option| {
             option
                 .name("name")
-                .description("name of music to search for")
+                .description("name of music to add to queue")
                 .kind(CommandOptionType::String)
                 .required(true)
         })
