@@ -24,7 +24,7 @@ use crate::ParseOptionValues;
 use crate::ParseTypeFromStr;
 
 pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Result<String, CommandError> {
-    let values: Vec<&CommandDataOptionValue> = options.values();
+    let values: Vec<&CommandDataOptionValue> = options.values()?;
 
     if let (CommandDataOptionValue::String(search_type), CommandDataOptionValue::String(search_term)) = 
         (values[0], values[1])  
