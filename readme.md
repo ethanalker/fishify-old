@@ -21,3 +21,8 @@ set setting
 		Enabels/disables spotify shuffle.
 	repeat bool
 		Enables/disables spotify repeat.
+
+TODO:
+implement queue locally and play when song ends, have the pi send a command every time music ends
+fix skip vote system
+permissions and shit
