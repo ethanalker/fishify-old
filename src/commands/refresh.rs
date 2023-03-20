@@ -12,12 +12,12 @@ use rspotify::{
 use crate::CommandError;
 
 pub async fn run(_options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Result<String, CommandError> {
-    spotify.resume_playback(None, None).await?;
-    Ok("Playback resumed".to_string())
+    spotify.transfer_playback("fishify", Some(true)).await?;
+    Ok("Playback transfered to speaker".to_string())
 }
 
 pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
     command
-        .name("resume")
-        .description("Resume playback")
+        .name("refresh")
+        .description("Transfer playback to speaker")
 }

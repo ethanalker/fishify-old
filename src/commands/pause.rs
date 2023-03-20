@@ -7,7 +7,6 @@ use serenity::model::prelude::interaction::application_command::{
 use rspotify::{
     AuthCodeSpotify,
     clients::OAuthClient,
-    model::PlayableItem,
 };
 
 use crate::CommandError;
