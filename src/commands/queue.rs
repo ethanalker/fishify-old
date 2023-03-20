@@ -30,48 +30,40 @@ pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Re
         let spotify_type = SearchType::parse(search_type)?;
 
         let result = spotify.search(search_term, spotify_type, None, None, Some(1), None).await?;
-        let name: String;
-        let mut track_ids: Vec<TrackId> = vec![];
         match result {
-            SearchResult::Tracks(page) => {
-                let track = page.items[0].clone();
-                name = track.name;
-                track_ids.push(track.id.ok_or("No track id")?);
+            SearchResult::Tracks(mut page) => {
+                let track = page.items.remove(0);
+                spotify.add_item_to_queue(PlayableId::Track(track.id.ok_or("No track id")?), None).await?;
+                Ok(format!("Successfully queued {} {}", search_type, track.name))
             }
-            SearchResult::Albums(page) => {
-                let album = page.items[0].clone();
-                name = album.name;
+            SearchResult::Albums(mut page) => {
+                let album = page.items.remove(0);
                 let tracks = spotify
                     .album(album.id.ok_or("No track id")?).await?
                     .tracks
                     .items;
 
                 for track in tracks {
-                    let id = track.id.ok_or("No track id")?;
-                    track_ids.push(id);
+                    spotify.add_item_to_queue(PlayableId::Track(track.id.ok_or("No track id")?), None).await?;
                 }
+                Ok(format!("Successfully queued {} {}", search_type, album.name))
             }
-            SearchResult::Playlists(page) => {
-                let playlist = page.items[0].clone();
-                name = playlist.name;
+            SearchResult::Playlists(mut page) => {
+                let playlist = page.items.remove(0);
                 let items = spotify
                     .playlist(playlist.id, None, None).await?
                     .tracks
                     .items;
 
                 for item in items {
-                    if let PlayableItem::Track(track) = item.track.ok_or("Playlist item does not have track")?
-                    {
-                        track_ids.push(track.id.ok_or("No track id")?);
-                    }
+                    spotify.add_item_to_queue(
+                        item.track.ok_or("No playable track")?.id().ok_or("No track id")?, None
+                        ).await?;
                 }
+                Ok(format!("Successfully queued {} {}", search_type, playlist.name))
             }
-            _ => return Err(CommandError::from("Unexpected search result type")),
+            _ => Err(CommandError::from("Unexpected search result type")),
         }
-        for id in track_ids {
-            spotify.add_item_to_queue(PlayableId::Track(id), None).await?;
-        }
-        Ok(format!("Successfully queued {} {}", search_type, name))
     } else {
         Err(CommandError::from("Invalid search arguments"))
     }

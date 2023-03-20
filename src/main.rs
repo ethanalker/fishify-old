@@ -26,10 +26,7 @@ use rspotify::{
     model::enums::types::SearchType,
 };
 
-struct Handler {
-    spotify: AuthCodeSpotify,
-}
-
+// Logger setup
 struct SimpleLogger;
 
 impl log::Log for SimpleLogger {
@@ -53,6 +50,7 @@ pub fn log_init() -> Result<(), SetLoggerError> {
                     .map(|()| log::set_max_level(LevelFilter::Info))
 }
 
+// Custom error type
 #[derive(Debug)]
 pub enum CommandError {
     SpotifyError(ClientError),
@@ -114,6 +112,10 @@ impl ParseOptionValues for [CommandDataOption] {
     }
 }
 
+struct Handler {
+    spotify: AuthCodeSpotify,
+}
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
@@ -125,8 +127,10 @@ impl EventHandler for Handler {
                 "play" => commands::play::run(&command.data.options, &self.spotify).await,
                 "queue" => commands::queue::run(&command.data.options, &self.spotify).await,
                 "set" => commands::set::run(&command.data.options, &self.spotify).await,
-                // "skip" => commands::skip::run(&command.data.options, &self.spotify).await,
+                "skip" => commands::skip::run(&command.data.options, &self.spotify).await,
                 "list" => commands::list::run(&command.data.options, &self.spotify).await,
+                "pause" => commands::pause::run(&command.data.options, &self.spotify).await,
+                "resume" => commands::resume::run(&command.data.options, &self.spotify).await,
                 _ => Err(CommandError::SimpleError("not implemented :(".to_string())),
             };
 
@@ -164,8 +168,10 @@ impl EventHandler for Handler {
                 .create_application_command(|command| commands::play::register(command))
                 .create_application_command(|command| commands::queue::register(command))
                 .create_application_command(|command| commands::set::register(command))
-                // .create_application_command(|command| commands::skip::register(command))
+                .create_application_command(|command| commands::skip::register(command))
                 .create_application_command(|command| commands::list::register(command))
+                .create_application_command(|command| commands::pause::register(command))
+                .create_application_command(|command| commands::resume::register(command))
         })
         .await;
 

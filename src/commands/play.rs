@@ -33,29 +33,29 @@ pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Re
 
         let result = spotify.search(search_term, spotify_type, None, None, Some(1), None).await?;
         match result {
-            SearchResult::Tracks(page) => {
-                let track = page.items[0].clone();
+            SearchResult::Tracks(mut page) => {
+                let track = page.items.remove(0);
                 let id = track.id.ok_or("No track id")?;
 
                 spotify.start_uris_playback([PlayableId::Track(id)], None, None, None).await?;
                 Ok(format!("Now playing {} by {}", track.name, track.artists[0].name))
             }
-            SearchResult::Albums(page) => {
-                let album = page.items[0].clone();
+            SearchResult::Albums(mut page) => {
+                let album = page.items.remove(0);
                 let id = album.id.ok_or("No album id")?;
                 
                 spotify.start_context_playback(PlayContextId::Album(id), None, None, None).await?;
                 Ok(format!("Now playing {} by {}", album.name, album.artists[0].name))
             }
-            SearchResult::Playlists(page) => {
-                let playlist = page.items[0].clone();
+            SearchResult::Playlists(mut page) => {
+                let playlist = page.items.remove(0);
                 let id = playlist.id;
 
                 spotify.start_context_playback(PlayContextId::Playlist(id), None, None, None).await?;
                 Ok(format!("Now playing {}", playlist.name))
             }
-            SearchResult::Artists(page) => {
-                let artist = page.items[0].clone();
+            SearchResult::Artists(mut page) => {
+                let artist = page.items.remove(0);
                 let id = artist.id;
 
                 spotify.start_context_playback(PlayContextId::Artist(id), None, None, None).await?;

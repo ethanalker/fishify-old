@@ -1,4 +1,6 @@
 use log::warn;
+use log::info;
+
 use serenity::builder::CreateApplicationCommand;
 use serenity::model::prelude::interaction::application_command::{
     CommandDataOption,
