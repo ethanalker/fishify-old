@@ -8,3 +8,4 @@ pub mod pause;
 pub mod resume;
 pub mod refresh;
 pub mod status;
+pub mod info;
