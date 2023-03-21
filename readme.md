@@ -1,28 +1,10 @@
-Tentative discord commands:
+# Fishify
 
-search [track/album/playlist] term
-	Returns the first 10 results for the term. Can be specified to return either albums, tracks, or playlists. Default behavior returns tracks. 
+Interact with the spotify api through discord. Heavily WIP!
 
-queue [track/album/playlist] term
-	Adds a track to the queue. Those with the DJ role can add all of the songs of an album or playlist to the queue.
-
-skip [--force]
-    Adds a vote to skip the current song. Three votes are required to skip the song. Those with the DJ role can use --force to skip immediately. 
-
-Only those with the DJ discord role will be able to use the following commands:
-
-play [track/album/playlist] term
-	Immediately plays a song, album, or playlist. This will bypass the queue, and when playing an album or playlist will delete the contents of the queue.
-
-set setting
-	queue bool
-		Enables/disbales the queue command.
-	shuffle bool
-		Enabels/disables spotify shuffle.
-	repeat bool
-		Enables/disables spotify repeat.
+I have [spotifyd](https://github.com/Spotifyd/spotifyd) running on a raspberry pi attached to a speaker. 
 
 TODO:
 implement queue locally and play when song ends, have the pi send a command every time music ends
 fix skip vote system
-permissions and shit
+possibly migrate to poise? it seems simpler but may not be worth it
