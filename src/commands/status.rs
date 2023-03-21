@@ -114,5 +114,5 @@ pub async fn run(_options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> R
 pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
     command
         .name("status")
-        .description("Playback status")
+        .description("Show playback status")
 }
