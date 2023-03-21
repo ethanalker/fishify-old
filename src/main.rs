@@ -132,6 +132,7 @@ impl EventHandler for Handler {
                 "pause" => commands::pause::run(&command.data.options, &self.spotify).await,
                 "resume" => commands::resume::run(&command.data.options, &self.spotify).await,
                 "refresh" => commands::refresh::run(&command.data.options, &self.spotify).await,
+                "status" => commands::status::run(&command.data.options, &self.spotify).await,
                 _ => Err(CommandError::SimpleError("not implemented :(".to_string())),
             };
 
@@ -174,6 +175,7 @@ impl EventHandler for Handler {
                 .create_application_command(|command| commands::pause::register(command))
                 .create_application_command(|command| commands::resume::register(command))
                 .create_application_command(|command| commands::refresh::register(command))
+                .create_application_command(|command| commands::status::register(command))
         })
         .await;
 
