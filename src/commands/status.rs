@@ -13,8 +13,7 @@ use rspotify::{
 use crate::CommandError;
 
 pub async fn run(_options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Result<String, CommandError> {
-    let additional_type = AdditionalType::Track;
-    let playback = spotify.current_playback(None, Some(vec![&additional_type]))
+    let playback = spotify.current_playback(None, None::<Vec<&AdditionalType>>)
         .await?
         .ok_or("No current playback")?;
 
