@@ -94,26 +94,34 @@ impl TypeFromStr for SearchType {
     }
 }
 
-pub fn values_from_options(options: &[CommandDataOption]) -> Vec<Option<&CommandDataOptionValue>> {
-    let mut values: Vec<Option<&CommandDataOptionValue>> = vec![];
+pub fn values_from_options(options: &[CommandDataOption]) -> Result<Vec<&CommandDataOptionValue>, CommandError> {
+    let mut values: Vec<&CommandDataOptionValue> = vec![];
     for option in options {
-        let value = &option.resolved;
-        values.push(value.as_ref());
+        let value = option.resolved.as_ref().ok_or("Failed to resolve value")?;
+        values.push(value);
     }
-    values
+    Ok(values)
 }
 
-pub fn search_type_from_value(value: Option<&CommandDataOptionValue>) -> Result<SearchType, CommandError> {
-    match value {
-        Some(CommandDataOptionValue::String(value)) => Ok(SearchType::parse(value)?),
+pub fn search_type_from_value(
+    values: &Vec<&CommandDataOptionValue>, 
+    index: usize
+) -> Result<SearchType, CommandError> {
+    match values.get(index) {
+        Some(CommandDataOptionValue::String(value)) => Ok(SearchType::parse(&value)?),
         None => Ok(SearchType::Track),
         _ => Err(CommandError::from("Invalid data option value")),
     }
 }
 
-pub fn str_from_value(value: Option<&CommandDataOptionValue>) -> Result<&str, CommandError> {
-    match value {
-        Some(CommandDataOptionValue::String(value)) => Ok(value),
+pub fn str_from_value<'a>(
+    values: &'a Vec<&'a CommandDataOptionValue>, 
+    index: usize, 
+    default: Option<&'a str>
+) -> Result<&'a str, CommandError> {
+    match (values.get(index), default) {
+        (Some(CommandDataOptionValue::String(value)), _) => Ok(&value),
+        (None, Some(value)) => Ok(value),
         _ => Err(CommandError::from("Invalid data option value")),
     }
 }
@@ -140,6 +148,7 @@ impl EventHandler for Handler {
                 "connect" => commands::connect::run(&command.data.options, &self.spotify).await,
                 "status" => commands::status::run(&command.data.options, &self.spotify).await,
                 "info" => commands::info::run(&command.data.options, &self.spotify).await,
+                "devices" => commands::devices::run(&command.data.options, &self.spotify).await,
                 _ => Err(CommandError::SimpleError("not implemented :(".to_string())),
             };
 
@@ -184,6 +193,7 @@ impl EventHandler for Handler {
                 .create_application_command(|command| commands::connect::register(command))
                 .create_application_command(|command| commands::status::register(command))
                 .create_application_command(|command| commands::info::register(command))
+                .create_application_command(|command| commands::devices::register(command))
         })
         .await;
 

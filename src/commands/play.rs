@@ -22,11 +22,11 @@ use crate::search_type_from_value;
 use crate::str_from_value;
 
 pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Result<String, CommandError> {
-    let values: Vec<Option<&CommandDataOptionValue>> = values_from_options(options);
+    let values: Vec<&CommandDataOptionValue> = values_from_options(options)?;
 
-    let search_type: SearchType = search_type_from_value(values[0])?; 
+    let search_term: &str = str_from_value(&values, 0, Some("track"))?;
 
-    let search_term: &str = str_from_value(values[1])?;
+    let search_type: SearchType = search_type_from_value(&values, 1)?; 
 
     let result = spotify.search(search_term, search_type, None, None, Some(1), None).await?;
 
@@ -69,6 +69,13 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
         .description("Play spotify music")
         .create_option(|option| {
             option
+                .name("name")
+                .description("name of music to add to queue")
+                .kind(CommandOptionType::String)
+                .required(true)
+        })
+        .create_option(|option| {
+            option
                 .name("type")
                 .description("track, album, playlist, or artist")
                 .kind(CommandOptionType::String)
@@ -77,12 +84,5 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                 .add_string_choice("playlist", "playlist")
                 .add_string_choice("artist", "artist")
                 .required(false)
-        })
-        .create_option(|option| {
-            option
-                .name("name")
-                .description("name of music to add to queue")
-                .kind(CommandOptionType::String)
-                .required(true)
         })
 }

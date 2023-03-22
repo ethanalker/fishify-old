@@ -9,3 +9,4 @@ pub mod resume;
 pub mod connect;
 pub mod status;
 pub mod info;
+pub mod devices;
