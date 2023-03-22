@@ -9,63 +9,59 @@ use serenity::model::prelude::interaction::application_command::{
 use rspotify::{
     AuthCodeSpotify,
     model::enums::types::SearchType,
-    model::idtypes::TrackId,
-    prelude::PlayableId,
-    model::PlayableItem,
     clients::BaseClient,
     clients::OAuthClient,
     model::search::SearchResult,
+    prelude::PlayableId,
 };
 
 use crate::CommandError;
-use crate::ParseOptionValues;
-use crate::ParseTypeFromStr;
+use crate::values_from_options;
+use crate::search_type_from_value;
+use crate::str_from_value;
 
 pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Result<String, CommandError> {
-    let values: Vec<&CommandDataOptionValue> = options.values()?;
+    let values: Vec<Option<&CommandDataOptionValue>> = values_from_options(options);
 
-    if let (CommandDataOptionValue::String(search_type), CommandDataOptionValue::String(search_term)) = 
-        (values[0], values[1])  
-    {
-        let spotify_type = SearchType::parse(search_type)?;
+    let search_type: SearchType = search_type_from_value(values[0])?; 
 
-        let result = spotify.search(search_term, spotify_type, None, None, Some(1), None).await?;
-        match result {
-            SearchResult::Tracks(mut page) => {
-                let track = page.items.remove(0);
-                spotify.add_item_to_queue(PlayableId::Track(track.id.ok_or("No track id")?), None).await?;
-                Ok(format!("Successfully queued {} {}", search_type, track.name))
-            }
-            SearchResult::Albums(mut page) => {
-                let album = page.items.remove(0);
-                let tracks = spotify
-                    .album(album.id.ok_or("No track id")?).await?
-                    .tracks
-                    .items;
+    let search_term: &str = str_from_value(values[1])?;
 
-                for track in tracks {
-                    spotify.add_item_to_queue(PlayableId::Track(track.id.ok_or("No track id")?), None).await?;
-                }
-                Ok(format!("Successfully queued {} {}", search_type, album.name))
-            }
-            SearchResult::Playlists(mut page) => {
-                let playlist = page.items.remove(0);
-                let items = spotify
-                    .playlist(playlist.id, None, None).await?
-                    .tracks
-                    .items;
+    let result = spotify.search(search_term, search_type, None, None, Some(1), None).await?;
 
-                for item in items {
-                    spotify.add_item_to_queue(
-                        item.track.ok_or("No playable track")?.id().ok_or("No track id")?, None
-                        ).await?;
-                }
-                Ok(format!("Successfully queued {} {}", search_type, playlist.name))
-            }
-            _ => Err(CommandError::from("Unexpected search result type")),
+    match result {
+        SearchResult::Tracks(mut page) => {
+            let track = page.items.remove(0);
+            spotify.add_item_to_queue(PlayableId::Track(track.id.ok_or("No track id")?), None).await?;
+            Ok(format!("Successfully queued {} {}", <SearchType as Into<&'static str>>::into(search_type), track.name))
         }
-    } else {
-        Err(CommandError::from("Invalid search arguments"))
+        SearchResult::Albums(mut page) => {
+            let album = page.items.remove(0);
+            let tracks = spotify
+                .album(album.id.ok_or("No track id")?).await?
+                .tracks
+                .items;
+
+            for track in tracks {
+                spotify.add_item_to_queue(PlayableId::Track(track.id.ok_or("No track id")?), None).await?;
+            }
+            Ok(format!("Successfully queued {} {}", <SearchType as Into<&'static str>>::into(search_type), album.name))
+        }
+        SearchResult::Playlists(mut page) => {
+            let playlist = page.items.remove(0);
+            let items = spotify
+                .playlist(playlist.id, None, None).await?
+                .tracks
+                .items;
+
+            for item in items {
+                spotify.add_item_to_queue(
+                    item.track.ok_or("No playable track")?.id().ok_or("No track id")?, None
+                    ).await?;
+            }
+            Ok(format!("Successfully queued {} {}", <SearchType as Into<&'static str>>::into(search_type), playlist.name))
+        }
+        _ => Err(CommandError::from("Unexpected search result type")),
     }
 }
 
@@ -81,7 +77,7 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                 .add_string_choice("track", "track")
                 .add_string_choice("album", "album")
                 .add_string_choice("playlist", "playlist")
-                .required(true)
+                .required(false)
         })
         .create_option(|option| {
             option

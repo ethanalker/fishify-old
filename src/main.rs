@@ -78,11 +78,11 @@ impl From<CommandError> for String {
     }
 }
 
-trait ParseTypeFromStr: Sized {
+trait TypeFromStr: Sized {
     fn parse(string: &str) -> Result<Self, CommandError>;
 }
 
-impl ParseTypeFromStr for SearchType {
+impl TypeFromStr for SearchType {
     fn parse(string: &str) -> Result<Self, CommandError> {
         match string {
             "track" => Ok(SearchType::Track),
@@ -94,21 +94,27 @@ impl ParseTypeFromStr for SearchType {
     }
 }
 
-trait ParseOptionValues {
-    fn values(&self) -> Result<Vec<&CommandDataOptionValue>, CommandError>;
+pub fn values_from_options(options: &[CommandDataOption]) -> Vec<Option<&CommandDataOptionValue>> {
+    let mut values: Vec<Option<&CommandDataOptionValue>> = vec![];
+    for option in options {
+        let value = &option.resolved;
+        values.push(value.as_ref());
+    }
+    values
 }
 
-impl ParseOptionValues for [CommandDataOption] {
-    fn values(&self) -> Result<Vec<&CommandDataOptionValue>, CommandError> {
-        let mut values: Vec<&CommandDataOptionValue> = vec![];
-        for option in self {
-            let value = option
-                .resolved
-                .as_ref()
-                .ok_or("Missing option value")?;
-            values.push(value);
-        }
-        Ok(values)
+pub fn search_type_from_value(value: Option<&CommandDataOptionValue>) -> Result<SearchType, CommandError> {
+    match value {
+        Some(CommandDataOptionValue::String(value)) => Ok(SearchType::parse(value)?),
+        None => Ok(SearchType::Track),
+        _ => Err(CommandError::from("Invalid data option value")),
+    }
+}
+
+pub fn str_from_value(value: Option<&CommandDataOptionValue>) -> Result<&str, CommandError> {
+    match value {
+        Some(CommandDataOptionValue::String(value)) => Ok(value),
+        _ => Err(CommandError::from("Invalid data option value")),
     }
 }
 
@@ -131,7 +137,7 @@ impl EventHandler for Handler {
                 "list" => commands::list::run(&command.data.options, &self.spotify).await,
                 "pause" => commands::pause::run(&command.data.options, &self.spotify).await,
                 "resume" => commands::resume::run(&command.data.options, &self.spotify).await,
-                "reconnect" => commands::refresh::run(&command.data.options, &self.spotify).await,
+                "connect" => commands::connect::run(&command.data.options, &self.spotify).await,
                 "status" => commands::status::run(&command.data.options, &self.spotify).await,
                 "info" => commands::info::run(&command.data.options, &self.spotify).await,
                 _ => Err(CommandError::SimpleError("not implemented :(".to_string())),
@@ -175,7 +181,7 @@ impl EventHandler for Handler {
                 .create_application_command(|command| commands::list::register(command))
                 .create_application_command(|command| commands::pause::register(command))
                 .create_application_command(|command| commands::resume::register(command))
-                .create_application_command(|command| commands::refresh::register(command))
+                .create_application_command(|command| commands::connect::register(command))
                 .create_application_command(|command| commands::status::register(command))
                 .create_application_command(|command| commands::info::register(command))
         })

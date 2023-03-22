@@ -19,6 +19,6 @@ pub async fn run(_options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> R
 
 pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
     command
-        .name("reconnect")
-        .description("Reconnect to speaker")
+        .name("connect")
+        .description("Connect to speaker")
 }

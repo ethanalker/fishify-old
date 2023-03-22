@@ -9,62 +9,57 @@ use serenity::model::prelude::interaction::application_command::{
 use rspotify::{
     AuthCodeSpotify,
     model::enums::types::SearchType,
-    model::page::Page,
-    model::idtypes::TrackId,
-    prelude::PlayableId,
-    model::PlayableItem,
     clients::BaseClient,
     clients::OAuthClient,
     model::search::SearchResult,
     prelude::PlayContextId,
+    prelude::PlayableId,
 };
 
 use crate::CommandError;
-use crate::ParseOptionValues;
-use crate::ParseTypeFromStr;
+use crate::values_from_options;
+use crate::search_type_from_value;
+use crate::str_from_value;
 
 pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Result<String, CommandError> {
-    let values: Vec<&CommandDataOptionValue> = options.values()?;
+    let values: Vec<Option<&CommandDataOptionValue>> = values_from_options(options);
 
-    if let (CommandDataOptionValue::String(search_type), CommandDataOptionValue::String(search_term)) = 
-        (values[0], values[1])  
-    {
-        let spotify_type = SearchType::parse(search_type)?;
+    let search_type: SearchType = search_type_from_value(values[0])?; 
 
-        let result = spotify.search(search_term, spotify_type, None, None, Some(1), None).await?;
-        match result {
-            SearchResult::Tracks(mut page) => {
-                let track = page.items.remove(0);
-                let id = track.id.ok_or("No track id")?;
+    let search_term: &str = str_from_value(values[1])?;
 
-                spotify.start_uris_playback([PlayableId::Track(id)], None, None, None).await?;
-                Ok(format!("Now playing {} by {}", track.name, track.artists[0].name))
-            }
-            SearchResult::Albums(mut page) => {
-                let album = page.items.remove(0);
-                let id = album.id.ok_or("No album id")?;
-                
-                spotify.start_context_playback(PlayContextId::Album(id), None, None, None).await?;
-                Ok(format!("Now playing {} by {}", album.name, album.artists[0].name))
-            }
-            SearchResult::Playlists(mut page) => {
-                let playlist = page.items.remove(0);
-                let id = playlist.id;
+    let result = spotify.search(search_term, search_type, None, None, Some(1), None).await?;
 
-                spotify.start_context_playback(PlayContextId::Playlist(id), None, None, None).await?;
-                Ok(format!("Now playing {}", playlist.name))
-            }
-            SearchResult::Artists(mut page) => {
-                let artist = page.items.remove(0);
-                let id = artist.id;
+    match result {
+        SearchResult::Tracks(mut page) => {
+            let track = page.items.remove(0);
+            let id = track.id.ok_or("No track id")?;
 
-                spotify.start_context_playback(PlayContextId::Artist(id), None, None, None).await?;
-                Ok(format!("Now playing from {}", artist.name))
-            }
-            _ => Err(CommandError::from("Unexpected search result type")),
+            spotify.start_uris_playback([PlayableId::Track(id)], None, None, None).await?;
+            Ok(format!("Now playing {} by {}", track.name, track.artists[0].name))
         }
-    } else {
-        Err(CommandError::from("Invalid search arguments"))
+        SearchResult::Albums(mut page) => {
+            let album = page.items.remove(0);
+            let id = album.id.ok_or("No album id")?;
+            
+            spotify.start_context_playback(PlayContextId::Album(id), None, None, None).await?;
+            Ok(format!("Now playing {} by {}", album.name, album.artists[0].name))
+        }
+        SearchResult::Playlists(mut page) => {
+            let playlist = page.items.remove(0);
+            let id = playlist.id;
+
+            spotify.start_context_playback(PlayContextId::Playlist(id), None, None, None).await?;
+            Ok(format!("Now playing {}", playlist.name))
+        }
+        SearchResult::Artists(mut page) => {
+            let artist = page.items.remove(0);
+            let id = artist.id;
+
+            spotify.start_context_playback(PlayContextId::Artist(id), None, None, None).await?;
+            Ok(format!("Now playing from {}", artist.name))
+        }
+        _ => Err(CommandError::from("Unexpected search result type")),
     }
 }
 
@@ -81,7 +76,7 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                 .add_string_choice("album", "album")
                 .add_string_choice("playlist", "playlist")
                 .add_string_choice("artist", "artist")
-                .required(true)
+                .required(false)
         })
         .create_option(|option| {
             option

@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use log::warn;
 use serenity::builder::CreateApplicationCommand;
 use serenity::model::prelude::interaction::application_command::{
@@ -11,8 +9,6 @@ use rspotify::{
     clients::OAuthClient,
     model::enums::types::AdditionalType,
     model::enums::types::DeviceType,
-    model::PlayableItem,
-    model::enums::misc::RepeatState,
     model::device::Device,
 };
 

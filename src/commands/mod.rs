@@ -6,6 +6,6 @@ pub mod skip;
 pub mod list;
 pub mod pause;
 pub mod resume;
-pub mod refresh;
+pub mod connect;
 pub mod status;
 pub mod info;

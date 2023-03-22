@@ -1,5 +1,3 @@
-use std::fs;
-
 use log::warn;
 use serenity::builder::CreateApplicationCommand;
 use serenity::model::prelude::command::CommandOptionType;
@@ -11,9 +9,6 @@ use serenity::model::prelude::interaction::application_command::{
 use rspotify::{
     AuthCodeSpotify,
     clients::OAuthClient,
-    model::enums::misc::RepeatState,
-    model::PlayableItem,
-    model::idtypes::Id,
 };
 
 use crate::CommandError;
