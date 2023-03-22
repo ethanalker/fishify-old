@@ -72,7 +72,7 @@ pub async fn run(_options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> R
         let progress_seconds = progress.as_secs();
         let duration_seconds = duration.as_secs();
         if duration.as_secs() / (60 * 60) > 0 {
-            status.push(format!("{}:{}:{} / {}:{}:{}",
+            status.push(format!("{}:{:0>2}:{:0>2} / {}:{:0>2}:{:0>2}",
                 progress_seconds / 60 / 60,
                 progress_seconds / 60 % 60,
                 progress_seconds % 60,
@@ -81,7 +81,7 @@ pub async fn run(_options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> R
                 duration_seconds % 60,
             ));
         } else {
-            status.push(format!("{}:{} / {}:{}",
+            status.push(format!("{}:{:0>2} / {}:{:0>2}",
                 progress_seconds / 60 % 60,
                 progress_seconds % 60,
                 duration_seconds / 60 % 60,
