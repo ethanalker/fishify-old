@@ -67,7 +67,7 @@ pub async fn run(_options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> R
             _ => break 'a,
         }; 
 
-        status.push(format!("{_type} {name}"));
+        status.push(format!("{_type:?} {name}"));
     } }
 
     // unpack item info
