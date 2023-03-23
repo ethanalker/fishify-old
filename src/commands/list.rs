@@ -19,28 +19,27 @@ pub async fn run(_options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> R
 
     let mut result: String = match queue.currently_playing {
         Some(PlayableItem::Track(playable)) => format!(
-            "Currently playing {} by {} \nQueue: \n", 
+            "> Currently playing {} by {} \n> Queue: \n", 
             playable.name, 
             playable.artists[0].name,
         ),
         Some(PlayableItem::Episode(playable)) => format!(
-            "Currently playing {} \nQueue: \n", 
+            "> Currently playing {} \n> Queue: \n", 
             playable.name, 
         ),
-        None => "Queue: \n".to_string(),
+        None => "> Queue: \n".to_string(),
     };
 
     for item in queue.queue {
         match item {
             PlayableItem::Track(track) => {
-                result.push_str(&track.artists[0].name);
-                result.push_str(" \u{2014} ");
-                result.push_str(&track.name);
-                result.push_str("\n");
+                let artist = &track.artists[0].name;
+                let name = &track.name;
+                result.push_str(format!("> {artist} \u{2014} {name}\n").as_ref());
             }
             PlayableItem::Episode(episode) => {
-                result.push_str(&episode.name);
-                result.push_str("\n");
+                let name = &episode.name;
+                result.push_str(format!("> {name}\n").as_ref());
             }
         }
     }
