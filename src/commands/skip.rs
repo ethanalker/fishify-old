@@ -12,80 +12,31 @@ use rspotify::{
 };
 
 use crate::CommandError;
+use crate::values_from_options;
+use crate::int_from_value;
 
-// struct SkipData {
-//     votes: u8,
-//     id: String,
-// }
-
-// make this better, maybe global maybe do something smarter idk
-// fix the ?????? shit
 pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Result<String, CommandError> {
-    let option = options.get(0).ok_or("Missing subcommand")?;
+    let values: Vec<&CommandDataOptionValue> = values_from_options(options)?;
 
-    match option.name.as_str() {
-        "vote" => {
-            // let id = spotify
-            //     .current_user_playing_item()
-            //     .await?
-            //     .ok_or("No currently playing context")?
-            //     .item
-            //     .ok_or("No currently playing item")?
-            //     .id()
-            //     .ok_or("Current item does not have id")?
-            //     .id();
+    let repeat = int_from_value(&values, 0, Some(1))?;
 
-            // let votes = fs::read_to_string("/tmp/fishify_skip_data/votes");
-            // let skip_id = fs::read_to_string("/tmp/fishify_skip_data/id");
-
-            // if skip.id == id {
-            //     skip.votes = skip.votes + 1;
-            // } else {
-            //     skip.id = id.to_string();
-            //     skip.votes = 1;
-            // }
-
-            // let result = if skip.votes >= 3 {
-            //     match spotify.next_track(None).await {
-            //         Ok(()) => "Successfuly skipped track".to_string(),
-            //         Err(why) => format!("Failed to skip track: {}", why),
-            //     }
-            // } else {
-            //     "Vote recorded".to_string()
-            // };
-
-            // match (fs::write("/tmp/fishify_skip_data/votes", skip.votes.to_string()),
-            //     fs::write("/tmp/fishify_skip_data/id", skip.id))
-            // {
-            //     (Ok(()), Ok(())) => (),
-            //     _ => warn!("Failed to write skip data to file"),
-            // }
-
-            // Ok(result)
-            Ok("Not implemented Fuck You".to_string())
-        }
-        "force" => { 
-            spotify.next_track(None).await?;
-            Ok("Skipped track".to_string())
-        }
-        _ => Err(CommandError::from("Invalid subcommad"))
+    for _ in 0..repeat {
+        spotify.next_track(None).await?;
     }
+    Ok("Skipped tracks".to_string())
 }
 
 pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
     command
         .name("skip")
-        .description("Skip currently playing song")
+        .description("Skip to next song")
         .create_option(|option| {
             option
-                .name("vote")
-                .description("vote to skip")
-                .kind(CommandOptionType::SubCommand)
-        })
-        .create_option(|option| {
-            option
-                .name("force")
-                .description("immediately skip")
-                .kind(CommandOptionType::SubCommand)
+                .name("count")
+                .description("Number of songs to skip")
+                .kind(CommandOptionType::Integer)
+                .min_int_value(1)
+                .max_int_value(10)
+                .required(false)
         })
 }

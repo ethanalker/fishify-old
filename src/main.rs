@@ -126,6 +126,18 @@ pub fn str_from_value<'a>(
     }
 }
 
+pub fn int_from_value(
+    values: &Vec<&CommandDataOptionValue>, 
+    index: usize, 
+    default: Option<i64>
+) -> Result<i64, CommandError> {
+    match (values.get(index), default) {
+        (Some(CommandDataOptionValue::Integer(value)), _) => Ok(*value),
+        (None, Some(value)) => Ok(value),
+        _ => Err(CommandError::from("Invalid data option value")),
+    }
+}
+
 struct Handler {
     spotify: AuthCodeSpotify,
 }
