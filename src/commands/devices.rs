@@ -23,12 +23,13 @@ pub async fn run(_options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> R
 
     for device in devices {
         let name = &device.name;
+        let _type = &device._type;
         let id = match &device.id {
             Some(val) => val,
             None => "NA",
         };
 
-        response.push_str(format!("> {name} - {id}\n").as_ref());
+        response.push_str(format!("> {_type:?} {name}\n> Id: {id}\n").as_ref());
     }
 
     Ok(response)
