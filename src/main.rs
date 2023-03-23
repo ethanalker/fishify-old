@@ -24,6 +24,7 @@ use rspotify::{
     scopes,
     ClientError,
     model::enums::types::SearchType,
+    model::idtypes::IdError,
 };
 
 // Logger setup
@@ -54,6 +55,7 @@ pub fn log_init() -> Result<(), SetLoggerError> {
 #[derive(Debug)]
 pub enum CommandError {
     SpotifyError(ClientError),
+    IdError(IdError),
     SimpleError(String),
 }
 
@@ -69,10 +71,17 @@ impl From<ClientError> for CommandError {
     }
 }
 
+impl From<IdError> for CommandError {
+    fn from(error: IdError) -> Self {
+        CommandError::IdError(error)
+    }
+}
+
 impl From<CommandError> for String {
     fn from(command_error: CommandError) -> Self {
         match command_error {
             CommandError::SpotifyError(error) => format!("Error: {}", error.to_string()),
+            CommandError::IdError(error) => format!("Error: {}", error.to_string()),
             CommandError::SimpleError(error) => format!("Error: {}", error),
         }
     }
