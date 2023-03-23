@@ -15,7 +15,11 @@ use crate::CommandError;
 pub async fn run(_options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Result<String, CommandError> {
     let devices: Vec<Device> = spotify.device().await?;
 
-    let mut response: String = "".to_string();
+    if devices.len() == 0 {
+        return Err(CommandError::from("No available devices"));
+    }
+
+    let mut response = String::new();
 
     for device in devices {
         let name = &device.name;
@@ -24,11 +28,7 @@ pub async fn run(_options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> R
             None => "NA",
         };
 
-        response.push_str("> ");
-        response.push_str(name);
-        response.push_str(" - ");
-        response.push_str(id);
-        response.push_str("\n");
+        response.push_str(format!("> {name} - {id}\n").as_ref());
     }
 
     Ok(response)

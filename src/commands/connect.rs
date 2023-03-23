@@ -19,20 +19,22 @@ use crate::str_from_value;
 pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Result<String, CommandError> {
     let values: Vec<&CommandDataOptionValue> = values_from_options(options)?;
 
-    let target = str_from_value(&values, 0, Some("fishipi"))?;
-
     let devices: Vec<Device> = spotify.device().await?;
 
-    for device in devices {
-        if device.name == target {
-            let id = device.id.ok_or("No device id")?;
+    let device = match str_from_value(&values, 0, None) {
+        Ok(target) => devices.iter().find(|device| device.name == target),
+        Err(_) => devices.get(0),
+    };
 
-            spotify.transfer_playback(&id, Some(false)).await?;
-            return Ok(format!("Playback transfered to {target}"));
-        }
+    if let Some(dev) = device {
+        let id = dev.id.as_ref().ok_or("Missing id")?;
+        let name = &dev.name;
+
+        spotify.transfer_playback(&id, None).await?;
+        Ok(format!("Playback transfered to {name}"))
+    } else {
+        Err(CommandError::from("Device not found"))
     }
-
-    Err(CommandError::from("Failed to find device"))
 }
 
 pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
