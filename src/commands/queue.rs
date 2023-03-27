@@ -25,7 +25,7 @@ pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Re
 
     let search_term: &str = str_from_value(&values, 0, Some("track"))?;
 
-    let search_type: SearchType = search_type_from_value(&values, 1)?; 
+    let search_type: SearchType = search_type_from_value(&values, 1, Some(SearchType::Track))?; 
 
     let result = spotify.search(search_term, search_type, None, None, Some(1), None).await?;
 

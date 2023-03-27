@@ -12,6 +12,10 @@ use rspotify::{
     clients::BaseClient,
     clients::OAuthClient,
     model::search::SearchResult,
+    model::idtypes::TrackId,
+    model::idtypes::AlbumId,
+    model::idtypes::PlaylistId,
+    model::idtypes::ArtistId,
     prelude::PlayContextId,
     prelude::PlayableId,
 };
@@ -20,15 +24,42 @@ use crate::CommandError;
 use crate::values_from_options;
 use crate::search_type_from_value;
 use crate::str_from_value;
+use crate::bool_from_value;
+use crate::id_from_url;
 
 pub async fn run(options: &[CommandDataOption], spotify: &AuthCodeSpotify) -> Result<String, CommandError> {
     let values: Vec<&CommandDataOptionValue> = values_from_options(options)?;
 
+    // there is a bug here if link is supplied but type isn't
     let search_term: &str = str_from_value(&values, 0, Some("track"))?;
 
-    let search_type: SearchType = search_type_from_value(&values, 1)?; 
+    let search_type: Option<SearchType> = search_type_from_value(&values, 1, None).ok(); 
 
-    let result = spotify.search(search_term, search_type, None, None, Some(1), None).await?;
+    let is_link: bool = bool_from_value(&values, 2, Some(false))?;
+
+    // this is a mess
+    // fix it later
+    let result = match (is_link, search_type) {
+        (true, Some(SearchType::Track)) => {
+            let id = TrackId::from_id(id_from_url(search_term)?)?;
+            spotify.start_uris_playback([PlayableId::Track(id)], None, None, None).await?;
+            return Ok("Now playing".to_string());
+        }
+        (true, Some(_type)) => {
+            let id = id_from_url(search_term)?;
+            let context = match _type {
+                SearchType::Album => PlayContextId::Album(AlbumId::from_id(id)?),
+                SearchType::Playlist => PlayContextId::Playlist(PlaylistId::from_id(id)?),
+                SearchType::Artist => PlayContextId::Artist(ArtistId::from_id(id)?),
+                _ => return Err("Unsupported context type".into()),
+            };
+            spotify.start_context_playback(context, None, None, None).await?;
+            return Ok("Now playing".to_string());
+        }
+        (true, None) => return Err("Must specify type when using link".into()),
+        (false, Some(_type)) => spotify.search(search_term, _type, None, None, Some(1), None).await?,
+        (false, None) => spotify.search(search_term, SearchType::Track, None, None, Some(1), None).await?,
+    };
 
     match result {
         SearchResult::Tracks(mut page) => {
@@ -70,19 +101,26 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
         .create_option(|option| {
             option
                 .name("name")
-                .description("name of music to add to queue")
+                .description("Name of music search for")
                 .kind(CommandOptionType::String)
                 .required(true)
         })
         .create_option(|option| {
             option
                 .name("type")
-                .description("track, album, playlist, or artist")
+                .description("Type of music")
                 .kind(CommandOptionType::String)
                 .add_string_choice("track", "track")
                 .add_string_choice("album", "album")
                 .add_string_choice("playlist", "playlist")
                 .add_string_choice("artist", "artist")
+                .required(false)
+        })
+        .create_option(|option| {
+            option
+                .name("link")
+                .description("Whether the search term should be interpretted as a link")
+                .kind(CommandOptionType::Boolean)
                 .required(false)
         })
 }

@@ -27,7 +27,6 @@ use rspotify::{
     model::idtypes::IdError,
 };
 
-// Logger setup
 struct SimpleLogger;
 
 impl log::Log for SimpleLogger {
@@ -47,8 +46,8 @@ impl log::Log for SimpleLogger {
 static LOGGER: SimpleLogger = SimpleLogger;
 
 pub fn log_init() -> Result<(), SetLoggerError> {
-        log::set_logger(&LOGGER)
-                    .map(|()| log::set_max_level(LevelFilter::Info))
+    log::set_logger(&LOGGER)
+        .map(|()| log::set_max_level(LevelFilter::Info))
 }
 
 // Custom error type
@@ -114,11 +113,12 @@ pub fn values_from_options(options: &[CommandDataOption]) -> Result<Vec<&Command
 
 pub fn search_type_from_value(
     values: &Vec<&CommandDataOptionValue>, 
-    index: usize
+    index: usize,
+    default: Option<SearchType>
 ) -> Result<SearchType, CommandError> {
-    match values.get(index) {
-        Some(CommandDataOptionValue::String(value)) => Ok(SearchType::parse(&value)?),
-        None => Ok(SearchType::Track),
+    match (values.get(index), default) {
+        (Some(CommandDataOptionValue::String(value)), _) => Ok(SearchType::parse(&value)?),
+        (None, Some(value)) => Ok(value),
         _ => Err(CommandError::from("Invalid data option value")),
     }
 }
@@ -145,6 +145,26 @@ pub fn int_from_value(
         (None, Some(value)) => Ok(value),
         _ => Err(CommandError::from("Invalid data option value")),
     }
+}
+
+pub fn bool_from_value(
+    values: &Vec<&CommandDataOptionValue>, 
+    index: usize, 
+    default: Option<bool>
+) -> Result<bool, CommandError> {
+    match (values.get(index), default) {
+        (Some(CommandDataOptionValue::Boolean(value)), _) => Ok(*value),
+        (None, Some(value)) => Ok(value),
+        _ => Err(CommandError::from("Invalid data option value")),
+    }
+}
+
+pub fn id_from_url(url: &str) -> Result<&str, CommandError> {
+    Ok(url.rsplit('/')
+        .collect::<Vec<&str>>()
+        .get(0)
+        .ok_or("Failed to parse url")?
+    )
 }
 
 struct Handler {
@@ -233,7 +253,7 @@ impl EventHandler for Handler {
 async fn main() {
     dotenv::dotenv().ok();
 
-    log_init();
+    log_init().expect("log init failed");
 
     // Spotify auth
     let config = Config {
