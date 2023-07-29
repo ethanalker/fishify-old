@@ -1,5 +1,7 @@
 # Fishify
 
+[MOVED](https://git.ealker.com/ealker/fishify)
+
 Interact with the spotify api through discord. Heavily WIP!
 
 I have [spotifyd](https://github.com/Spotifyd/spotifyd) running on a raspberry pi attached to a speaker. 
